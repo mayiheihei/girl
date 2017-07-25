@@ -1,12 +1,18 @@
 package com.imooc.conntroller;
 
 import com.imooc.domain.Girl;
+import com.imooc.domain.Result;
 import com.imooc.repository.GirlRepository;
 import com.imooc.service.GirlService;
+import com.imooc.utils.ResultUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 
+import javax.validation.Valid;
 import java.util.List;
 
 /**
@@ -21,6 +27,9 @@ public class GirlConntroller {
     @Autowired
     private GirlService girlService;
 
+
+    private static final Logger logger = LoggerFactory.getLogger(GirlConntroller.class);
+
     /**
      * 查询出所有女生的信息
      *
@@ -28,6 +37,7 @@ public class GirlConntroller {
      */
     @GetMapping("/girls")
     public List<Girl> girlList() {
+        logger.info("我是展示女生方法");
         return girlRepository.findAll();
     }
 
@@ -35,16 +45,17 @@ public class GirlConntroller {
     /**
      * 增
      *
-     * @param cupSize 罩杯
-     * @param age     年龄
+     * @param girl 女孩对象
      * @return 新增女孩信息
      */
     @PostMapping("/girls")
-    public Girl girlAdd(@RequestParam("cupSize") String cupSize, @RequestParam("age") Integer age) {
-        Girl girl = new Girl();
-        girl.setCupSize(cupSize);
-        girl.setAge(age);
-        return girlRepository.save(girl);
+    public Result<Girl> girlAdd(@Valid Girl girl, BindingResult bindingResult) {
+        if (bindingResult.hasErrors()) {
+            return ResultUtil.error(1, bindingResult.getFieldError().getDefaultMessage());
+        }
+        girl.setCupSize(girl.getCupSize());
+        girl.setAge(girl.getAge());
+        return ResultUtil.success(0, girlRepository.save(girl));
     }
 
     /**
@@ -95,7 +106,6 @@ public class GirlConntroller {
      * @param age
      * @return girl集合
      */
-
     @GetMapping("/girls/girl/{age}")
     public List<Girl> girlListByAge(@PathVariable("age") Integer age) {
         return girlRepository.findByAge(age);
@@ -106,5 +116,11 @@ public class GirlConntroller {
     @Transactional
     public void girlTwo() {
         girlService.insertTwo();
+    }
+
+
+    @GetMapping("/girls/ifAge/{id}")
+    public void ifAge(@PathVariable("id") Integer id) throws Exception {
+        girlService.ifAge(id);
     }
 }

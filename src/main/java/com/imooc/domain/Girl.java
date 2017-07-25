@@ -3,6 +3,7 @@ package com.imooc.domain;
 import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
 import javax.persistence.Id;
+import javax.validation.constraints.Min;
 
 /**
  * Created by Administrator on 2017/7/16.
@@ -13,6 +14,7 @@ public class Girl {
     @GeneratedValue
     private Integer id;
     private String cupSize;
+    @Min(value = 18, message = "未满18岁禁止入内")
     private Integer age;
 
     public Girl() {

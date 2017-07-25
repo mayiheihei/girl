@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width"/>
+    <title>DataGrid的使用示例</title>
+    <link href="assets/easyui/themes/default/easyui.css" rel="stylesheet"/>
+    <link href="assets/easyui/themes/icon.css" rel="stylesheet"/>
+    <link href="assets/easyui/themes/demo.css" rel="stylesheet"/>
+    <script src="assets/easyui/jquery.min.js"></script>
+    <script src="assets/easyui/jquery.easyui.min.js"></script>
+    <script src="assets/easyui/locale/easyui-lang-zh_CN.js"></script>
+</head>
+<body>
+<table id="dg"></table>
+
+<div id="toolbar" style="padding:3px">
+    <div>
+        <a href="#" class="easyui-linkbutton" iconcls="icon-add" plain="true" onclick="doFirstAdd()">增加</a>
+        <a href="#" class="easyui-linkbutton" iconcls="icon-edit" plain="true" id="edit" onclick="doEdit()">编辑</a>
+        <a href="#" class="easyui-linkbutton" iconcls="icon-remove" plain="true" onclick="doRemove()">删除</a>
+        <a href="#" class="easyui-linkbutton" iconcls="icon-save" plain="true" style="display:none" id="save"
+           onclick="doSave()">保存</a>
+        <a href="#" class="easyui-linkbutton" iconcls="icon-redo" plain="true" style="display:none" id="redo"
+           onclick="doRedo()">取消编辑</a>
+        <span>姓名</span>
+        <input id="searchName" style="line-height:20px;border:1px solid #ccc">
+        <a href="#" class="easyui-linkbutton" plain="true" iconcls="icon-search" onclick="doSearch()">查询</a>
+    </div>
+</div>
+
+<div id="menu" class="easyui-menu">
+    <div onclick="doFirstAdd()">新增</div>
+    <div onclick="doEdit()">编辑</div>
+    <div onclick="doRemove()">删除</div>
+</div>
+</body>
+</html>
+<!--DataGrid 是扩展自Panel面板，所有Panel的属性DataGrid是可以使用的-->
+<script type="text/javascript">
+    var editRow = undefined; //自己定义一个变量，只有当editRow等于false的时候才能添加一行（这样就能保证在添加一行的时候只有保存了这一行后才可以添加新的行。）undefined在if语句中，都会被自动转为false  
+
+    var mySelectRow = undefined;
+
+    $(function () {
+        $("#dg").datagrid({
+            title: "实时数据",
+            /*width: 800,
+            height: 320,*/
+            fit: true,
+            iconCls: 'icon-search', //在标题前面加一个搜索图标  
+            pagination: true,
+            pageList: [2, 5, 8, 10],
+            pageNumber: 1,
+            url: "findAllJw",
+            sortName: 'Age',
+            sortOrder: 'ASC',
+            toolbar: "#toolbar",
+
+            fitColumns: true, //设置每列的宽度自适应DataGrid设定的宽度。默认为false  
+
+            columns: [[
+                {
+                    title: '编号',
+                    field: 'xh',
+                    width: 100,
+                    checkbox: true //这个checkbox:true 就表示让Id这一行显示为复选框的样式。
+                },
+
+                {
+                    title: '井号',
+                    field: 'jh',
+                    width: 100,
+                    sortable: true,
+                    editor:
+                        {
+                            type: 'validatebox', //type的值可以是text,textarea,checkbox,numberbox,validatebox,datebox,combobox,combotree  
+                            options:
+                                {
+                                    required: true //这个框是必填项  
+                                }
+                        }
+                },
+                {
+                    title: '油压点位',
+                    field: 'yy',
+                    width: 100,
+                    editor:
+                        {
+                            type: 'validatebox',
+                            options:
+                                {
+                                    required: true
+                                }
+                        }
+
+                },
+                {
+                    title: '井口温度',
+                    field: 'jkwd',
+                    width: 100,
+                    editor:
+                        {
+                            type: 'validatebox',
+                            options:
+                                {
+                                    required: true
+                                }
+                        }
+                },
+                {
+                    title: '套温点位',
+                    field: 'tw',
+                    width: 100,
+                    editor:
+                        {
+                            type: 'validatebox',
+                            options:
+                                {
+                                    required: true,
+//                                    validType: 'email', 详见http://www.jeasyui.net/plugins/167.html
+                                }
+                        }
+                },
+                {
+                    title: '状态',
+                    field: 'status',
+                    width: 100,
+                    editor:
+                        {
+                            type: 'checkbox',
+                            options:
+                                {
+//                                  TODO: 如何实现掩码展示？
+                                    on: '同步', off: '不同步'
+                                }
+                        }
+                }
+            ]],
+
+            //在鼠标右击一行记录的时候触发
+
+            onRowContextMenu: function (e, rowIndex, rowData) {
+                e.preventDefault();//当鼠标在DataGrid里面的时候，取消右键的默认行为（即：鼠标右键的时候不弹出默认的菜单）
+                if (mySelectRow != undefined) {
+                    $("#dg").datagrid("unselectRow", mySelectRow);
+                    mySelectRow = undefined;
+                }
+
+                if (mySelectRow == undefined) {
+                    $("#dg").datagrid("selectRow", rowIndex); //将右键的这一行设为选中行
+                    mySelectRow = rowIndex;
+                }
+
+
+                $("#menu").menu('show', {
+                    left: e.pageX,
+                    top: e.pageY,
+                });
+
+            },
+
+            //在用户双击一行的时候触发：参数：rowIndex：双击的行的索引值，该索引值从0开始。rowData：表示你双击的那一行
+            onDblClickRow: function (rowIndex, rowData) {
+                if (editRow != undefined) {
+                    $("#dg").datagrid("endEdit", editRow); //如果双击一行准备对这一行编辑的时候，发现如果editRow不为undefined，那么就将之前编辑(或新增)的那一行结束编辑。
+                    //特别要注意：当结束编辑行的时候，会触发onAfterEdit事件。即结束编辑行的时候会跳到onAfterEdit里执行，然后再来执行当前方法的下面代码
+                    editRow = undefined;
+                }
+
+                if (editRow == undefined) {
+                    $('#dg').datagrid('beginEdit', rowIndex);//将双击的那一行设置为开始编辑状态（即：可以编辑了）
+                    $("#save,#redo").show();
+                    editRow = rowIndex;
+                }
+            },
+
+
+            //--------------------------------所有的编辑，和新增最终在这个onAfterEdit事件中处理
+
+
+            //在用户完成编辑或新增一行的时候触发（即：用户添加或者编辑一行后保存，在保存里执行 $("#dg").datagrid('endEdit', editRow)这段代码，即结束行编辑后后触发onAfterEdit事件）
+            onAfterEdit: function (rowIndex, rowData, changes) { //参数：rowIndex：编辑行的索引，rowData：编辑行，changes:更改后的字段的键值对
+
+                //获取新增的那条数据
+                var inserted = $("#dg").datagrid("getChanges", "inserted");
+
+
+                //获取编辑(更新)的那条数据
+                var updated = $('#dg').datagrid('getChanges', 'updated'); //这里要特别留意，如果你启动了编辑，但是没有修改数据，点击保存（结束编辑）的时候是无法获取到数据的
+
+
+                var json = "";  //传递到服务端的Json对象
+                var info = "";  //提示信息
+
+                //新增数据
+                if (inserted.length > 0) {
+
+                    var strInsert = JSON.stringify(inserted[0]); //将新增的这条数据转换成Json类型的字符串
+
+                    json = $.parseJSON(strInsert); //然后将这个Json字符串转换成Json对象，作为参数传递到服务端，服务器就可以用对于的key来接收这个Json传递的数据了。
+
+                    info = "新增"
+                }
+                //编辑数据
+                if (updated.length > 0) {
+
+                    var strUpdate = JSON.stringify(updated[0]);
+                    json = $.parseJSON(strUpdate);
+
+                    info = "修改"
+                }
+                if (inserted.length > 0 || updated.length > 0) {
+                    $.ajax({
+                        type: "post",
+                        url: "updateJw",
+                        data: json,
+
+                        beforeSend: function () {
+                            $("#box").datagrid("loading");
+                        },
+
+                        success: function (data) {
+                            if (data != null) {
+                                $("#dg").datagrid("loaded");
+                                $("#dg").datagrid("load");
+                                $("#dg").datagrid("unselectAll"); //编辑或新增成功后取消之前所有的选中行
+
+                                $.messager.show({
+                                    title: '提示',
+                                    msg: "成功" + info + data + " 条数据"
+                                })
+                            }
+                            else {
+                                $.messager.alert("警告", info + "失败");
+                            }
+
+                            editRow = undefined;  //数据保存成功后将editRow设置为undefined。这样就又可以新增一行，或编辑一行了。
+                            $("#save,#redo").hide();
+                        }
+
+                    })
+                }
+            },
+        })
+    })
+
+    //----------------------------------查询
+
+    //根据姓名查询数据
+    function doSearch() {
+        $("#dg").datagrid("load", {
+            searchName: $("#searchName").val()
+        })
+    }
+
+
+    //----------------------------------增加
+
+    //注意：：：这里的增加仅仅是让DataGrid新增一个空行，填完数据点保存后（即$("#dg").datagrid('endEdit', editRow);即结束行编辑）后悔触发onAfterEdit事件，在onAfterEdit事件里写ajax方法，提交新增的或编辑的数据到服务端处理）
+
+    //在当前页的开头添加一行
+    function doFirstAdd() {
+
+        if (editRow == undefined) {
+            $("#dg").datagrid("insertRow", {
+                index: 0, //表示在第一行添加
+                row:
+                    {}
+            })
+
+            //将第一行设置为可编辑状态: 0表示第一行。即将第一行设置为可编辑状态
+            $("#dg").datagrid("beginEdit", 0)
+
+            editRow = 0; //添加了一行以后就将这editRow的值设置为0这样就保证了在新添加这一行后，在没有保存前这一行数据前将无法添加新的另外一行
+
+            $("#save,#redo").show();
+        }
+    }
+
+    //在当前页的末尾添加一行
+    function doListAdd() {
+
+        $("#dg").datagrid("appendRow", {
+            Name: "张三",
+            Age: '25',
+            Phone: '18650000168',
+            Email: 'yaho@qq.com',
+        })
+        //将第一行设置为可编辑状态: 0表示第一行。即将第一行设置为可编辑状态
+        $("#dg").datagrid("beginEdit", 0)
+    }
+
+    //--------------------------------------------编辑
+
+    function doEdit() {
+        var selectRows = $("#dg").datagrid("getSelections"); //获取所有被选中的行，以选中行的数量返回（例如：选择3行，则返回3）当没有记录被选中的时候将返回一个空数组
+        if (selectRows.length > 1) {
+            $.messager.alert("提示", "不能同时编辑多行,一次只能编辑一行！", 'info');
+        }
+        else if (selectRows < 1) {
+            $.messager.alert("提示", "请选择要编辑的行！", "info");
+        }
+        else {
+
+            var selectRowIndex = $("#dg").datagrid("getRowIndex", selectRows[0]);//获取选中行的索引
+
+            if (editRow != undefined) {
+
+                $("#dg").datagrid("endEdit", editRow);
+                editRow = undefined;
+            }
+            if (editRow == undefined) {
+                $("#dg").datagrid("beginEdit", selectRowIndex)
+                $("#save,#redo").show();
+                editRow = selectRowIndex; //将当前选中行的索引赋值给editRow
+
+                //如果我们想点击编辑一行后，不撤销，也不保存，然后再双击其他行进行编辑，那么我们就需要撤销之前进行编辑的那一行
+                $("#dg").datagrid("unselectRow", selectRowIndex);
+
+            }
+        }
+
+    }
+
+    //-----------------------------------------删除
+    function doRemove() {
+        var selectRows = $("#dg").datagrid("getSelections");
+        if (selectRows.length > 0) {
+            $.messager.confirm("提示", "确定要删除吗？", function (isTrue) {
+                if (isTrue) {
+                    var ids = [];
+                    for (var i = 0; i < selectRows.length; i++) {
+                        ids.push(selectRows[i].Id); //将选的行的Id添加到ids数组中
+                    }
+                    alert(ids);
+                    $.ajax({
+                        type: 'post',
+                        url: 'Home/RemoveDataById',
+                        data: {id: ids.join(',')},
+
+                        beforeSend: function () { //beforeSend用于在向服务器发送请求前执行一些动作。
+                            $("#dg").datagrid('loading'); //这里其实就是提示：正在处理，请稍待...
+                        },
+                        success: function (data) {
+                            if (data) { //如果有数据返回（返回删除数据的总条数）
+                                $("#dg").datagrid("loaded"); //关闭“正在处理，请稍待...”这条提示
+                                $("#dg").datagrid("load"); //重新加载数据，即:刷新页面。
+
+                                $("#dg").datagrid("unselectAll"); //删除成功之后，取消所有的选中行
+
+                                $.messager.show({  //这里其实就在在屏幕的右下角显示一个提示框
+                                    title: '提示',
+                                    msg: data + '行记录被删除',
+                                })
+
+                            }
+                        }
+
+                    })
+                }
+            });
+        }
+        else {
+            $.messager.alert("提示", "请选择要删除的行！", 'info');
+
+        }
+    }
+
+
+    //保存
+    function doSave() {
+        //保存的时候需要先将编辑的那一行（即：第一行）设为结束编辑状态
+        $("#dg").datagrid('endEdit', editRow);//执行后会跳到onAfterEdit
+    }
+
+    //撤销编辑
+    function doRedo() {
+        $("#dg").datagrid("rejectChanges");
+        editRow = undefined //撤销编辑后，又可以添加新行，所以将它设为undefined
+        $("#save,#redo").hide();
+    }
+
+
+</script> 
